@@ -2,22 +2,27 @@ import os
 import base64
 
 from flask import Flask, request, session
-from model import Grade 
+from model import Grade
+import random
 
 app = Flask(__name__)
 app.secret_key = "dFbVyccvTuNpkUP2x6vcnZWN"
 
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = str(random(12))
 
     if request.method == 'POST':
-        g = Grade(
-            student=request.form['student'],
-            assignment=request.form['assignment'],
-            grade=request.form['grade'],
-        )
-        #print("(" + request.form['grade'] + ")")
-        g.save()
+        if request.form.get('csrf_token', None) == session['csrf_token']:
+            g = Grade(
+                student=request.form['student'],
+                assignment=request.form['assignment'],
+                grade=request.form['grade'],
+            )
+            # print("(" + request.form['grade'] + ")")
+            g.save()
 
     body = """
 <html>
@@ -36,11 +41,13 @@ def home():
     <input type="text" name="grade"><br>
 
     <input type="submit" value="Submit">
+
+    <input type="hidden" name="csrf_token" value = "{}">
 </form>
 
 <h2>Existing Grades</h2>
-"""
-    
+""".format(session['csrf_token'])
+
     for g in Grade.select():
         body += """
 <div class="grade">
@@ -48,7 +55,7 @@ def home():
 </div>
 """.format(g.student, g.assignment, g.grade)
 
-    return body 
+    return body
 
 
 if __name__ == "__main__":
